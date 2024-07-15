@@ -1,10 +1,5 @@
 /**
- * @file endian.h
  * @brief 字节序操作函数(大端/小端)
- * @author sylar.yin
- * @email 564628276@qq.com
- * @date 2019-06-01
- * @copyright Copyright (c) 2019年 sylar.yin All rights reserved (www.sylar.top)
  */
 #ifndef __SYLAR_ENDIAN_H__
 #define __SYLAR_ENDIAN_H__
@@ -17,30 +12,18 @@
 
 namespace sylar {
 
-/**
- * @brief 8字节类型的字节序转化
- */
 template<class T>
-typename std::enable_if<sizeof(T) == sizeof(uint64_t), T>::type
-byteswap(T value) {
+typename std::enable_if<sizeof(T) == sizeof(uint64_t), T>::type byteswap(T value) {
     return (T)bswap_64((uint64_t)value);
 }
 
-/**
- * @brief 4字节类型的字节序转化
- */
 template<class T>
-typename std::enable_if<sizeof(T) == sizeof(uint32_t), T>::type
-byteswap(T value) {
+typename std::enable_if<sizeof(T) == sizeof(uint32_t), T>::type byteswap(T value) {
     return (T)bswap_32((uint32_t)value);
 }
 
-/**
- * @brief 2字节类型的字节序转化
- */
 template<class T>
-typename std::enable_if<sizeof(T) == sizeof(uint16_t), T>::type
-byteswap(T value) {
+typename std::enable_if<sizeof(T) == sizeof(uint16_t), T>::type byteswap(T value) {
     return (T)bswap_16((uint16_t)value);
 }
 

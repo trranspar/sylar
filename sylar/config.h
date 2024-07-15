@@ -6,7 +6,6 @@
 #include<sstream>
 #include<boost/lexical_cast.hpp>
 #include<yaml-cpp/yaml.h>
-#include"log.h"
 #include<vector>
 #include<list>
 #include<map>
@@ -14,6 +13,9 @@
 #include<unordered_map>
 #include<unordered_set>
 #include<functional>
+
+#include"log.h"
+#include"thread.h"
 
 namespace sylar {
 	class ConfigVarBase {
@@ -36,6 +38,8 @@ namespace sylar {
 		std::string m_name;
 		std::string m_description;
 	};
+
+	
 
 	//F from_type	T to_type
 	template<class F, class T>
@@ -232,11 +236,14 @@ namespace sylar {
 		}
 	};
 
+
+
 	//FromStr T operator()(const std::string&)
 	//ToStr std::string operator()(const T&)
 	template<class T, class FromStr = LexicalCast<std::string, T>, class ToStr = LexicalCast<T, std::string> >
 	class ConfigVar : public ConfigVarBase {
 	public:
+		typedef RWMutex RWMutexType;
 		typedef std::shared_ptr<ConfigVar> ptr;
 		typedef std::function<void (const T& old_value, const T& new_value)> on_charge_cb;
 
@@ -251,6 +258,7 @@ namespace sylar {
 		std::string toString() override {
 			try {
 				//return boost::lexical_cast<std::string>(m_val);
+				RWMutexType::ReadLock lock(m_mutex);
 				return ToStr()(m_val);	//ToStr()创建临时对象，调用operator()实现类型转换
 			} catch(std::exception& e) {
 				SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::toString exception"
@@ -270,43 +278,68 @@ namespace sylar {
 			return false;
 		}
 
-		const T getValue() const { return m_val; }
+		const T getValue() {
+			RWMutexType::ReadLock lock(m_mutex);
+			return m_val;
+		}
+
 		void setValue(const T& v) {
-			if(v == m_val) {
-				return;
+			{
+				RWMutexType::ReadLock lock(m_mutex);
+				if(v == m_val) {
+					return;
+				}
+				for(auto& i : m_cbs) {
+					i.second(m_val, v);
+				}
 			}
-			for(auto& i : m_cbs) {
-				i.second(m_val, v);
-			}
+			RWMutexType::writeLock lock(m_mutex);
 			m_val = v;
 		}
+
 		std::string getTypeName() const override { return typeid(T).name(); }
 
-		void addListener(uint64_t key, on_charge_cb cb) {
-			m_cbs[key] = cb;
+		uint64_t addListener(on_charge_cb cb) {
+			static uint64_t s_fun_id = 0;
+			RWMutexType::writeLock lock(m_mutex);
+			++s_fun_id;
+			m_cbs[s_fun_id] = cb;
+			return s_fun_id;
 		}
+
 		void delListener(uint64_t key) {
+			RWMutexType::writeLock lock(m_mutex);
 			m_cbs.erase(key);
 		}
+
 		on_charge_cb getListener(uint64_t key) {
+			RWMutexType::ReadLock lock(m_mutex);
 			auto it = m_cbs.find(key);
 			return it == m_cbs.end() ? nullptr : it->second;
 		}
+
 		void clearListener()  {
+			RWMutexType::writeLock lock(m_mutex);
 			m_cbs.clear();
 		}
+
 	private:
+		RWMutexType m_mutex;
 		T m_val;
 		//变更回调函数组，uint64_t key，要求唯一，一般可以用hash
 		std::map<uint64_t, on_charge_cb> m_cbs;
 	};
 
+
+
 	class Config {
 	public:
 		typedef std::map<std::string, ConfigVarBase::ptr> ConfigVarMap;
+		typedef RWMutex RWMutexType;
 
 		template<class T>
 		static typename ConfigVar<T>::ptr Lookup(const std::string& name, const T& default_value, const std::string& description = "") {
+			RWMutexType::writeLock lock(GetMutex());
 			auto it = GetDatas().find(name);
 			if (it != GetDatas().end()) {
 				auto tmp = std::dynamic_pointer_cast<ConfigVar<T> >(it->second);
@@ -333,6 +366,7 @@ namespace sylar {
 
 		template<class T>
 		static typename ConfigVar<T>::ptr Lookup(const std::string& name) {
+			RWMutexType::ReadLock lock(GetMutex());
 			auto it = GetDatas().find(name);
 			if (it == GetDatas().end()) {
 				return nullptr;
@@ -342,11 +376,18 @@ namespace sylar {
 
 		static void LoadFromYaml(const YAML::Node& root);
 		static ConfigVarBase::ptr LookupBase(const std::string& name);
+
+		static void Visit(std::function<void(ConfigVarBase::ptr)> cb);
 	private:
 		//静态变量初始化顺序
 		static ConfigVarMap& GetDatas() {
 			static ConfigVarMap s_datas;
 			return s_datas;
+		}
+
+		static RWMutexType& GetMutex() {
+			static RWMutexType s_mutex;
+			return s_mutex;
 		}
 	};
 

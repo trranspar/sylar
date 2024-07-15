@@ -1,5 +1,12 @@
+/root/workspace/sylar/build/CMakeFiles/test_util.dir
 /root/workspace/sylar/build/CMakeFiles/rebuild_cache.dir
-/root/workspace/sylar/build/CMakeFiles/edit_cache.dir
-/root/workspace/sylar/build/CMakeFiles/sylar.dir
-/root/workspace/sylar/build/CMakeFiles/test_config.dir
+/root/workspace/sylar/build/CMakeFiles/test_thread.dir
 /root/workspace/sylar/build/CMakeFiles/test.dir
+/root/workspace/sylar/build/CMakeFiles/test_hook.dir
+/root/workspace/sylar/build/CMakeFiles/test_config.dir
+/root/workspace/sylar/build/CMakeFiles/sylar.dir
+/root/workspace/sylar/build/CMakeFiles/test_fiber.dir
+/root/workspace/sylar/build/CMakeFiles/test_scheduler.dir
+/root/workspace/sylar/build/CMakeFiles/test_iomanager.dir
+/root/workspace/sylar/build/CMakeFiles/test_address.dir
+/root/workspace/sylar/build/CMakeFiles/edit_cache.dir

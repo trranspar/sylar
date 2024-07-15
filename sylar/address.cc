@@ -3,13 +3,15 @@
 #include <sstream>
 #include <netdb.h>
 #include <ifaddrs.h>
-#include <stddef.h>
 
 #include "endian.h"
 
+#include <stddef.h>
+
+
 namespace sylar {
 
-static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
+static sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 
 template<class T>
 static T CreateMask(uint32_t bits) {
@@ -50,6 +52,7 @@ IPAddress::ptr Address::LookupAnyIPAddress(const std::string& host,
     }
     return nullptr;
 }
+
 
 
 bool Address::Lookup(std::vector<Address::ptr>& result, const std::string& host,
@@ -104,11 +107,13 @@ bool Address::Lookup(std::vector<Address::ptr>& result, const std::string& host,
     next = results;
     while(next) {
         result.push_back(Create(next->ai_addr, (socklen_t)next->ai_addrlen));
-        //SYLAR_LOG_INFO(g_logger) << ((sockaddr_in*)next->ai_addr)->sin_addr.s_addr;
+        // SYLAR_LOG_INFO(g_logger) << ((sockaddr_in*)next->ai_addr)->sin_addr.s_addr;
         next = next->ai_next;
     }
 
     freeaddrinfo(results);
+    //****************************************************/
+    //return ture;
     return !result.empty();
 }
 
@@ -117,7 +122,7 @@ bool Address::GetInterfaceAddresses(std::multimap<std::string
                     int family) {
     struct ifaddrs *next, *results;
     if(getifaddrs(&results) != 0) {
-        SYLAR_LOG_DEBUG(g_logger) << "Address::GetInterfaceAddresses getifaddrs "
+        SYLAR_LOG_ERROR(g_logger) << "Address::GetInterfaceAddresses getifaddrs "
             " err=" << errno << " errstr=" << strerror(errno);
         return false;
     }
@@ -162,6 +167,7 @@ bool Address::GetInterfaceAddresses(std::multimap<std::string
         return false;
     }
     freeifaddrs(results);
+    /*********************************************** */
     return !result.empty();
 }
 
@@ -188,8 +194,11 @@ bool Address::GetInterfaceAddresses(std::vector<std::pair<Address::ptr, uint32_t
     for(; its.first != its.second; ++its.first) {
         result.push_back(its.first->second);
     }
+    /*********************************************** */
     return !result.empty();
 }
+
+
 
 int Address::getFamily() const {
     return getAddr()->sa_family;
@@ -243,6 +252,10 @@ bool Address::operator!=(const Address& rhs) const {
     return !(*this == rhs);
 }
 
+
+
+
+
 IPAddress::ptr IPAddress::Create(const char* address, uint16_t port) {
     addrinfo hints, *results;
     memset(&hints, 0, sizeof(addrinfo));
@@ -272,6 +285,10 @@ IPAddress::ptr IPAddress::Create(const char* address, uint16_t port) {
     }
 }
 
+
+
+
+
 IPv4Address::ptr IPv4Address::Create(const char* address, uint16_t port) {
     IPv4Address::ptr rt(new IPv4Address);
     rt->m_addr.sin_port = byteswapOnLittleEndian(port);
@@ -294,10 +311,6 @@ IPv4Address::IPv4Address(uint32_t address, uint16_t port) {
     m_addr.sin_family = AF_INET;
     m_addr.sin_port = byteswapOnLittleEndian(port);
     m_addr.sin_addr.s_addr = byteswapOnLittleEndian(address);
-}
-
-sockaddr* IPv4Address::getAddr() {
-    return (sockaddr*)&m_addr;
 }
 
 const sockaddr* IPv4Address::getAddr() const {
@@ -356,6 +369,10 @@ void IPv4Address::setPort(uint16_t v) {
     m_addr.sin_port = byteswapOnLittleEndian(v);
 }
 
+
+
+
+
 IPv6Address::ptr IPv6Address::Create(const char* address, uint16_t port) {
     IPv6Address::ptr rt(new IPv6Address);
     rt->m_addr.sin6_port = byteswapOnLittleEndian(port);
@@ -383,10 +400,6 @@ IPv6Address::IPv6Address(const uint8_t address[16], uint16_t port) {
     m_addr.sin6_family = AF_INET6;
     m_addr.sin6_port = byteswapOnLittleEndian(port);
     memcpy(&m_addr.sin6_addr.s6_addr, address, 16);
-}
-
-sockaddr* IPv6Address::getAddr() {
-    return (sockaddr*)&m_addr;
 }
 
 const sockaddr* IPv6Address::getAddr() const {
@@ -464,6 +477,10 @@ void IPv6Address::setPort(uint16_t v) {
     m_addr.sin6_port = byteswapOnLittleEndian(v);
 }
 
+
+
+
+
 static const size_t MAX_PATH_LEN = sizeof(((sockaddr_un*)0)->sun_path) - 1;
 
 UnixAddress::UnixAddress() {
@@ -488,13 +505,9 @@ UnixAddress::UnixAddress(const std::string& path) {
     m_length += offsetof(sockaddr_un, sun_path);
 }
 
-void UnixAddress::setAddrLen(uint32_t v) {
-    m_length = v;
-}
-
-sockaddr* UnixAddress::getAddr() {
-    return (sockaddr*)&m_addr;
-}
+// void UnixAddress::setAddrLen(uint32_t v) {
+//     m_length = v;
+// }
 
 const sockaddr* UnixAddress::getAddr() const {
     return (sockaddr*)&m_addr;
@@ -504,17 +517,17 @@ socklen_t UnixAddress::getAddrLen() const {
     return m_length;
 }
 
-std::string UnixAddress::getPath() const {
-    std::stringstream ss;
-    if(m_length > offsetof(sockaddr_un, sun_path)
-            && m_addr.sun_path[0] == '\0') {
-        ss << "\\0" << std::string(m_addr.sun_path + 1,
-                m_length - offsetof(sockaddr_un, sun_path) - 1);
-    } else {
-        ss << m_addr.sun_path;
-    }
-    return ss.str();
-}
+// std::string UnixAddress::getPath() const {
+//     std::stringstream ss;
+//     if(m_length > offsetof(sockaddr_un, sun_path)
+//             && m_addr.sun_path[0] == '\0') {
+//         ss << "\\0" << std::string(m_addr.sun_path + 1,
+//                 m_length - offsetof(sockaddr_un, sun_path) - 1);
+//     } else {
+//         ss << m_addr.sun_path;
+//     }
+//     return ss.str();
+// }
 
 std::ostream& UnixAddress::insert(std::ostream& os) const {
     if(m_length > offsetof(sockaddr_un, sun_path)
@@ -525,6 +538,10 @@ std::ostream& UnixAddress::insert(std::ostream& os) const {
     return os << m_addr.sun_path;
 }
 
+
+
+
+
 UnknownAddress::UnknownAddress(int family) {
     memset(&m_addr, 0, sizeof(m_addr));
     m_addr.sa_family = family;
@@ -534,9 +551,9 @@ UnknownAddress::UnknownAddress(const sockaddr& addr) {
     m_addr = addr;
 }
 
-sockaddr* UnknownAddress::getAddr() {
-    return (sockaddr*)&m_addr;
-}
+// sockaddr* UnknownAddress::getAddr() {
+//     return (sockaddr*)&m_addr;
+// }
 
 const sockaddr* UnknownAddress::getAddr() const {
     return &m_addr;

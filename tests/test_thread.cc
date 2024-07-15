@@ -1,40 +1,38 @@
-#include "sylar/sylar.h"
-#include <unistd.h>
+#include"../sylar/sylar.h"
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
-
-int count = 0;
 //sylar::RWMutex s_mutex;
 sylar::Mutex s_mutex;
+int count = 0;
 
 void fun1() {
     SYLAR_LOG_INFO(g_logger) << "name: " << sylar::Thread::GetName()
-                             << " this.name: " << sylar::Thread::GetThis()->getName()
-                             << " id: " << sylar::GetThreadId()
-                             << " this.id: " << sylar::Thread::GetThis()->getId();
-
+                             << "   this.name: " << sylar::Thread::GetThis()->GetName()
+                             << "   id: " << sylar::GetThreadId() 
+                             << "   this.id: " << sylar::Thread::GetThis()->getId();
     for(int i = 0; i < 100000; ++i) {
-        //sylar::RWMutex::WriteLock lock(s_mutex);
+        //sylar::RWMutex::writeLock lock(s_mutex);
         sylar::Mutex::Lock lock(s_mutex);
-        ++count;
+        count++;
     }
 }
 
 void fun2() {
-    while(true) {
-        SYLAR_LOG_INFO(g_logger) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    while (true) {
+        SYLAR_LOG_INFO(g_logger) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     }
 }
 
 void fun3() {
-    while(true) {
-        SYLAR_LOG_INFO(g_logger) << "========================================";
+    while (true) {
+        SYLAR_LOG_INFO(g_logger) << "====================================";
     }
+    
 }
 
 int main(int argc, char** argv) {
     SYLAR_LOG_INFO(g_logger) << "thread test begin";
-    YAML::Node root = YAML::LoadFile("/home/sylar/test/sylar/bin/conf/log2.yml");
+    YAML::Node root = YAML::LoadFile("/root/workspace/sylar/bin/conf/log2.yml");
     sylar::Config::LoadFromYaml(root);
 
     std::vector<sylar::Thread::ptr> thrs;
@@ -50,6 +48,8 @@ int main(int argc, char** argv) {
     }
     SYLAR_LOG_INFO(g_logger) << "thread test end";
     SYLAR_LOG_INFO(g_logger) << "count=" << count;
+
+
 
     return 0;
 }
